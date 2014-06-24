@@ -166,11 +166,11 @@ namespace code {
     T max(T a, T b) {
         return a > b ? a : b;
     }
-
+    bool isMaster = false;
     void Init() {
+        std::ifstream myfile;
         if(isMaster){
             cout << "Master initializing...\n";
-            std::ifstream myfile;
             myfile.open("D:\\SHAD\\PV\\MinskHW\\AddTask\\LR2\\DataGenerator\\input.txt");
         }else {
             cout << "Slave initializing...\n";
@@ -414,8 +414,6 @@ namespace code {
         }
 
     }
-
-    bool isMaster = false;
 
     void countNewDt() {
         double maxKoef = std::fabs(u(1, 1)) + std::sqrt(gamma * (p(1, 1) / ro(1, 1)));
