@@ -201,44 +201,52 @@ namespace code {
     }
 
     void stage1() {
-        for (int i = 1; i <= M; ++i) {
-            for (int j = 1; j <= N; ++j) {
+        for (int i = max(igl * r1 - 1,1); i <= min(2 + (igl+1)*r1, M); ++i) {
+            for (int j = max(jgl * r2 - 1,1); i <= min(2 + (jgl+1)*r2, N); ++j) {
                 p(i, j) = (gamma - 1) * roOld(i, j) *
                           (EOld(i, j) - ((uOld(i, j) * uOld(i, j) + vOld(i, j) * vOld(i, j)) / 2));
             }
         }
-        for (int j = 1; j <= N; ++j) {
-            p(0, j) = p(1, j);
-            p(M + 1, j) = p(M, j);
+        if( igl == 0){
+            for(int j = jgl * r2; min(1 + (jgl +1)*r2,N); ++j){
+                p(0,j) = p(1,j);
+            }
         }
-        for (int i = 1; i <= M; ++i) {
-            p(i, 0) = p(i, 1);
-            p(i, N + 1) = p(i, N);
+        if( jgl == 0){
+            for(int i = igl * r1; min(1 + (igl +1)*r1,M); ++i){
+                p(i,0) = p(i,1);
+            }
         }
+        if( igl == Q1 - 1){
+            for(int j = jgl * r2; min(1 + (jgl +1)*r2,N); ++j){
+                p(M+1,j) = p(M,j);
+            }
+        }
+        if( jgl == Q2-1){
+            for(int i = igl * r1; min(1 + (igl +1)*r1,M); ++i){
+                p(i,N+1) = p(i,N);
+            }
+        }
+
     }
 
     void stage2() {
-        for (int j = 1; j <= N; ++j) {
-            pIPlus05(0, j) = (p(0, j) + p(1, j)) / 2;
-            uPlus05(0, j) = (uOld(0, j) + uOld(1, j)) / 2;
+        for (int i = max(igl * r1 - 1,0); i <= min(1 + (igl+1)*r1, M); ++i) {
+            for (int j = max(jgl * r2 - 1,1); i <= min(1 + (jgl+1)*r2, N); ++j) {
+            pIPlus05(i, j) = (p(i, j) + p(i+1, j)) / 2;
+            uPlus05(i, j) = (uOld(i, j) + uOld(i+1, j)) / 2;
         }
-        for (int i = 1; i <= M; ++i) {
-            pJPlus05(i, 0) = (p(i, 0) + p(i, 1)) / 2;
-            vPlus05(i, 0) = (vOld(i, 0) + vOld(i, 1)) / 2;
+        for (int i = max(igl * r1 ,1); i <= min(1 + (igl+1)*r1, M); ++i) {
+            for (int j = max(jgl * r2 - 1,0); i <= min(1 + (jgl+1)*r2, N); ++j) {
+            pJPlus05(i, 0) = (p(i, j) + p(i, j+1)) / 2;
+            vPlus05(i, 0) = (vOld(i, j) + vOld(i, j+1)) / 2;
         }
-        for (int i = 1; i <= M; ++i) {
-            for (int j = 1; j <= N; ++j) {
-                pIPlus05(i, j) = (p(i, j) + p(i + 1, j)) / 2;
-                pJPlus05(i, j) = (p(i, j) + p(i, j + 1)) / 2;
-                uPlus05(i, j) = (uOld(i, j) + uOld(i + 1, j)) / 2;
-                vPlus05(i, j) = (vOld(i, j) + vOld(i, j + 1)) / 2;
-            }
-        }
+        //покрыты ли границы я хз
     }
 
     void stage3() {
-        for (int i = 1; i <= M; ++i) {
-            for (int j = 1; j <= N; ++j) {
+        for (int i = max(igl * r1,1); i <= min(1 + (igl+1)*r1, M); ++i) {
+            for (int j = max(jgl * r2 ,1); i <= min(1 + (jgl+1)*r2, N); ++j) {
                 uTilde(i, j) = uOld(i, j) - ((pIPlus05(i, j) + pIPlus05(i - 1, j)) / dz) * (dt / roOld(i, j));
                 vTilde(i, j) = vOld(i, j) - ((pJPlus05(i, j) + pJPlus05(i, j - 1)) / dr) * (dt / roOld(i, j));
                 ETilde(i, j) = EOld(i, j) -
@@ -248,27 +256,40 @@ namespace code {
                                (dt / roOld(i, j));
             }
         }
-        for (int j = 1; j <= N; ++j) {
-            uTilde(0, j) = -uTilde(1, j);
-            uTilde(M + 1, j) = uTilde(M, j);
-            vTilde(0, j) = vTilde(1, j);
-            vTilde(M + 1, j) = vTilde(M, j);
-            ETilde(0, j) = ETilde(1, j);
-            ETilde(M + 1, j) = ETilde(M, j);
+        if(igl == 0){
+            for (int j = jgl * r2; j <=  min(1+(jgl+1)*r2,N); ++j) {
+                uTilde(0, j) = -uTilde(1, j);
+                vTilde(0, j) = vTilde(1, j);
+                ETilde(0, j) = ETilde(1, j);
+            }
         }
-        for (int i = 1; i <= M; ++i) {
-            uTilde(i, 0) = uTilde(i, 1);
-            uTilde(i, N + 1) = uTilde(i, N);
-            vTilde(i, 0) = -vTilde(i, 1);
-            vTilde(i, N + 1) = -vTilde(i, N);
-            ETilde(i, 0) = ETilde(i, 1);
-            ETilde(i, N + 1) = ETilde(i, N);
+        if(igl == Q1 - 1){
+            for (int j = jgl * r2; j <=  min(1+(jgl+1)*r2,N); ++j) {
+                uTilde(M + 1, j) = uTilde(M, j);
+                vTilde(M + 1, j) = vTilde(M, j);
+                ETilde(M + 1, j) = ETilde(M, j);
+            }
+        }
+        if(jgl == 0){
+            for (int i = igl*r1; i <=  min(1+(igl+1)*r1,M); ++i) {
+                uTilde(i, 0) = uTilde(i, 1);
+                vTilde(i, 0) = -vTilde(i, 1);
+                ETilde(i, 0) = ETilde(i, 1);
+            }
+        }
+
+        if(jgl == Q2-1){
+            for (int i = igl*r1; i <=  min(1+(igl+1)*r1,M); ++i) {
+                uTilde(i, N + 1) = uTilde(i, N);
+                vTilde(i, N + 1) = -vTilde(i, N);
+                ETilde(i, N + 1) = ETilde(i, N);
+            }
         }
     }
 
     void stage4() {
-        for (int i = 0; i <= M; ++i) {
-            for (int j = 1; j <= N; ++j) {
+        for (int i = igl * r1; i <= min((igl+1)*r1,M); ++i) {
+            for (int j = jgl * r2 + 1; j <= min((jgl+1)*r2,N); ++j) {
                 if (uTilde(i, j) + uTilde(i + 1, j) >= 0) {
                     dMIPlus05(i, j) = (j - 0.5) * roOld(i, j) * ((uTilde(i, j) + uTilde(i + 1, j)) / 2) * dr * dr * dt;
                 } else {
@@ -277,8 +298,8 @@ namespace code {
             }
         }
 
-        for (int i = 1; i <= M; ++i) {
-            for (int j = 0; j <= N; ++j) {
+        for (int i = igl * r1 +1; i <= min((igl+1)*r1,M); ++i) {
+            for (int j = jgl * r2 ; j <= min((jgl+1)*r2,N); ++j) {
                 if (vTilde(i, j) + vTilde(i, j + 1) >= 0) {
                     dMJPlus05(i, j) = j * roOld(i, j) * ((vTilde(i, j) + vTilde(i, j + 1)) / 2) * dr * dz * dt;
                 } else {
@@ -289,8 +310,8 @@ namespace code {
     }
 
     void stage5() {
-        for (int i = 1; i <= M; ++i) {
-            for (int j = 1; j <= N; ++j) {
+        for (int i = 1 + igl * r1; i <= min((igl+1)*r1,M); ++i) {
+            for (int j = 1 + jgl * r2 ; j <=min((jgl+1)*r2,N); ++j) {
                 ro(i, j) = roOld(i, j) +
                            (dMIPlus05(i - 1, j) + dMJPlus05(i, j - 1) - dMIPlus05(i, j) - dMJPlus05(i, j)) /
                            ((j - 0.5) * dz * dr * dr);
@@ -309,20 +330,33 @@ namespace code {
             }
         }
 
-        for (int j = 1; j <= N; ++j) {
-            ro(M + 1, j) = ro(M, j);
-            u(0, j) = -u(1, j);
-            u(M + 1, j) = u(M, j);
-            v(0, j) = v(1, j);
-            v(M + 1, j) = v(M, j);
+        if(igl == 0){
+            for (int j = 1 + jgl * r2; j <=  min((jgl + 1)*r2,N); ++j) {
+                u(0, j) = -u(1, j);
+                v(0, j) = v(1, j);
+            }
+        }
+        if(igl == Q1 - 1){
+            for (int j = 1 + jgl * r2; j <=  min((jgl + 1)*r2,N); ++j) {
+                ro(M + 1, j) = ro(M, j);
+                u(M + 1, j) = u(M, j);
+                v(M + 1, j) = v(M, j);
+            }
+        }
+        if(jgl == 0){
+            for (int i = 1 + igl*r1; i <=  min((igl + 1)*r1,M); ++i) {
+                u(i, 0) = u(i, 1);
+                v(i, 0) = -v(i, 1);
+            }
         }
 
-        for (int i = 1; i <= M; ++i) {
-            u(i, 0) = u(i, 1);
-            u(i, N + 1) = u(i, N);
-            v(i, 0) = -v(i, 1);
-            v(i, N + 1) = -v(i, N);
+        if(jgl == Q2-1){
+            for (int i = 1 + igl*r1; i <=  min((igl + 1)*r1,M); ++i) {
+                u(i, N + 1) = u(i, N);
+                v(i, N + 1) = -v(i, N);
+            }
         }
+
     }
 
     void countNewDt() {
