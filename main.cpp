@@ -171,7 +171,7 @@ namespace code {
         std::ifstream myfile;
         if(isMaster){
             cout << "Master initializing...\n";
-            myfile.open("D:\\SHAD\\PV\\MinskHW\\AddTask\\LR2\\DataGenerator\\input.txt");
+            myfile.open("input.txt");
         }else {
             cout << "Slave initializing...\n";
         }
