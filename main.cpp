@@ -85,6 +85,34 @@ public:
         }
         cout << std::endl;
     }
+
+    void sendPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
+        int count = (iEnd - iBegin) * (jEnd - jBegin);
+        T *arr = new T[count];
+
+        int k = 0;
+        for (int i = iBegin; i < iEnd; ++i) {
+            for (int j = jBegin; j < jEnd; ++j) {
+                (*this)(i, j) = arr[k++];
+            }
+        }
+
+        MPI_Send(arr, count, datatype, dest, tag, comm);
+    }
+
+    void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
+        int count = (iEnd - iBegin) * (jEnd - jBegin);
+        T *arr = new T[count];
+
+        int k = 0;
+        for (int i = iBegin; i < iEnd; ++i) {
+            for (int j = jBegin; j < jEnd; ++j) {
+                arr[k++] = (*this)(i, j);
+            }
+        }
+
+        MPI_Recv(arr, count, datatype, source, tag, comm, status);
+    }
 };
 
 char *getCmdOption(char **begin, char **end, const std::string &option) {
@@ -106,9 +134,10 @@ namespace code {
     int master = 0;
     int rank;
     int size;
-    int iGl = 0;
-    int jGl = 0;
-    int r3 = 4;
+    int igl = 0;
+    int jgl = 0;
+    int r1 = 1, r2 = 1, r3 = 4;
+    int Q1 = 1, Q2 = 1, Q3 = 1;
     int uSize = 0;
     vector< SimpleMatrix<double> > us;
     int prociGl = 0;
@@ -128,6 +157,15 @@ namespace code {
         dMIPlus05, dMJPlus05, p;
 
 //------------------  } DATA  --------------------
+    template <class T>
+    T min(T a, T b) {
+        return a < b ? a : b;
+    }
+
+    template <class T>
+    T max(T a, T b) {
+        return a > b ? a : b;
+    }
 
     void Init() {
         if(isMaster){
@@ -137,7 +175,6 @@ namespace code {
         }else {
             cout << "Slave initializing...\n";
         }
-        
         //reading M, N
         if( isMaster ) myfile >> M >> N;
         MPI_Bcast(&M, 1, MPI_INT, master, MPI_COMM_WORLD);
@@ -250,13 +287,15 @@ namespace code {
     void stage2() {
         for (int i = max(igl * r1 - 1,0); i <= min(1 + (igl+1)*r1, M); ++i) {
             for (int j = max(jgl * r2 - 1,1); i <= min(1 + (jgl+1)*r2, N); ++j) {
-            pIPlus05(i, j) = (p(i, j) + p(i+1, j)) / 2;
-            uPlus05(i, j) = (uOld(i, j) + uOld(i+1, j)) / 2;
+                pIPlus05(i, j) = (p(i, j) + p(i+1, j)) / 2;
+                uPlus05(i, j) = (uOld(i, j) + uOld(i+1, j)) / 2;
+            }
         }
         for (int i = max(igl * r1 ,1); i <= min(1 + (igl+1)*r1, M); ++i) {
             for (int j = max(jgl * r2 - 1,0); i <= min(1 + (jgl+1)*r2, N); ++j) {
-            pJPlus05(i, 0) = (p(i, j) + p(i, j+1)) / 2;
-            vPlus05(i, 0) = (vOld(i, j) + vOld(i, j+1)) / 2;
+                pJPlus05(i, 0) = (p(i, j) + p(i, j+1)) / 2;
+                vPlus05(i, 0) = (vOld(i, j) + vOld(i, j+1)) / 2;
+            }
         }
         //покрыты ли границы я хз
     }
@@ -466,16 +505,16 @@ namespace code {
         MPI_Bcast(&r3, 1, MPI_INT, master, MPI_COMM_WORLD);
         
         Ab.resize(n, n + 1);
-        int Q3 = ceil(double((n + 1)) / r3);
-        int Q2 = size - 1;
-        int r2 = ceil(double(n) / Q2);
+        Q3 = ceil(double((n + 1)) / r3);
+        Q2 = size - 1;
+        r2 = ceil(double(n) / Q2);
         master = size - 1;
         u.resize(n, r3);
 
         //initialize data
         //if (rank == master) {
 
-            initData();            
+            Init();            
 
             // debugInput();
 
