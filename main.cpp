@@ -19,11 +19,11 @@ using std::vector;
 
 template <class T> class SimpleMatrix {
 private:
-    vector<T> data;
     int size1;
     int size2;
 
 public:
+    vector<T> data;
     SimpleMatrix() {}
 
     SimpleMatrix(int size1, int size2) {
@@ -129,13 +129,20 @@ namespace code {
 
 //------------------  } DATA  --------------------
 
-    void initData() {
-        cout << "Master initializing...\n";
-        std::ifstream myfile;
-        myfile.open("D:\\SHAD\\PV\\MinskHW\\AddTask\\LR2\\DataGenerator\\input.txt");
-
+    void Init() {
+        if(isMaster){
+            cout << "Master initializing...\n";
+            std::ifstream myfile;
+            myfile.open("D:\\SHAD\\PV\\MinskHW\\AddTask\\LR2\\DataGenerator\\input.txt");
+        }else {
+            cout << "Slave initializing...\n";
+        }
+        
         //reading M, N
-        myfile >> M >> N;
+        if( isMaster ) myfile >> M >> N;
+        MPI_Bcast(&M, 1, MPI_INT, master, MPI_COMM_WORLD);
+        MPI_Bcast(&N, 1, MPI_INT, master, MPI_COMM_WORLD);
+
         roOld.resize(M + 2, N + 2);
         uOld.resize(M + 2, N + 2);
         vOld.resize(M + 2, N + 2);
@@ -156,19 +163,29 @@ namespace code {
         p.resize(M + 2, N + 2);
 
         //reading dt, dr, dz, gamma, dk
-        myfile >> dt >> dr >> dz >> gamma >> dk;
+        if( isMaster ) myfile >> dt >> dr >> dz >> gamma >> dk;
+
+        MPI_Bcast(&dt, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&dr, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&dz, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&gamma, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(&dk, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading ro
-        roOld.input(myfile);
+        if( isMaster )roOld.input(myfile);
+        MPI_Bcast(roOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading u
-        uOld.input(myfile);
+        if( isMaster )uOld.input(myfile);
+        MPI_Bcast(uOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading v
-        vOld.input(myfile);
+        if( isMaster )vOld.input(myfile);
+        MPI_Bcast(vOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading E
-        EOld.input(myfile);
+        if( isMaster )EOld.input(myfile);
+        MPI_Bcast(EOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         myfile.close();
     }
@@ -359,6 +376,8 @@ namespace code {
 
     }
 
+    bool isMaster = false;
+
     void countNewDt() {
         double maxKoef = std::fabs(u(1, 1)) + std::sqrt(gamma * (p(1, 1) / ro(1, 1)));
         double newKoef = 0;
@@ -431,8 +450,9 @@ namespace code {
         MPI_Init(&argc, &argv);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &size);
+        isMaster =  rank == master;
 
-        if (rank == master) {
+        if ( isMaster ) {
             //Get options
             if (cmdOptionExists(argv, argv + argc, "-nn")) {
                 n = atoi(getCmdOption(argv, argv + argc, "-nn"));
@@ -453,7 +473,7 @@ namespace code {
         u.resize(n, r3);
 
         //initialize data
-        if (rank == master) {
+        //if (rank == master) {
 
             initData();            
 
@@ -464,7 +484,7 @@ namespace code {
                 calcTile();
             }
             // debugOutput();
-        }
+        //}
 
         MPI_Finalize();
         return 0;
