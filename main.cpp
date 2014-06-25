@@ -210,19 +210,19 @@ namespace code {
 
         //reading ro
         if( isMaster )roOld.input(myfile);
-        MPI_Bcast(roOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(roOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading u
         if( isMaster )uOld.input(myfile);
-        MPI_Bcast(uOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(uOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading v
         if( isMaster )vOld.input(myfile);
-        MPI_Bcast(vOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(vOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading E
         if( isMaster )EOld.input(myfile);
-        MPI_Bcast(EOld.data.data(), M+2* N+2, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        MPI_Bcast(EOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         myfile.close();
     }
@@ -261,23 +261,27 @@ namespace code {
                           (EOld(i, j) - ((uOld(i, j) * uOld(i, j) + vOld(i, j) * vOld(i, j)) / 2));
             }
         }
+
         if( igl == 0){
-            for(int j = jgl * r2; min(1 + (jgl +1)*r2,N); ++j){
+            for(int j = jgl * r2; j < min(1 + (jgl +1)*r2,N); ++j){
                 p(0,j) = p(1,j);
             }
         }
+
         if( jgl == 0){
-            for(int i = igl * r1; min(1 + (igl +1)*r1,M); ++i){
+            for(int i = igl * r1; i < min(1 + (igl +1)*r1,M); ++i){
                 p(i,0) = p(i,1);
             }
         }
+
         if( igl == Q1 - 1){
-            for(int j = jgl * r2; min(1 + (jgl +1)*r2,N); ++j){
+            for(int j = jgl * r2; j < min(1 + (jgl +1)*r2,N); ++j){
                 p(M+1,j) = p(M,j);
             }
         }
+
         if( jgl == Q2-1){
-            for(int i = igl * r1; min(1 + (igl +1)*r1,M); ++i){
+            for(int i = igl * r1; i < min(1 + (igl +1)*r1,M); ++i){
                 p(i,N+1) = p(i,N);
             }
         }
@@ -463,7 +467,7 @@ namespace code {
 
     void calcTile() {
         stage1();
-
+        cout << "stage1 done\n";
         //cout << "\n\n!!! new p = \n";
         //for (int i = 0; i <= M + 1; ++i) {
         //    for (int j = 0; j <= N + 1; ++j) {
@@ -474,9 +478,13 @@ namespace code {
         //cout << std::endl;
 
         stage2();
+        cout << "stage2 done\n";
         stage3();
+        cout << "stage3 done\n";
         stage4();
+        cout << "stage4 done\n";
         stage5();
+        cout << "stage5 done\n";
 
         countNewDt();
 
@@ -505,6 +513,7 @@ namespace code {
         Ab.resize(n, n + 1);
         Q3 = ceil(double((n + 1)) / r3);
         Q2 = size - 1;
+        r1 = ceil(double(n) / Q1);
         r2 = ceil(double(n) / Q2);
         master = size - 1;
         u.resize(n, r3);
@@ -513,7 +522,7 @@ namespace code {
         //if (rank == master) {
 
             Init();            
-
+            cout<<"init done\n";
             // debugInput();
 
             //computations
