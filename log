@@ -1,0 +1,94 @@
+
+time mpirun -np 4 ./main -ls 10
+0:05.74 real,18.09 user,0.71 sys
+time mpirun -np 8 ./main -ls 10
+0:07.07 real,40.89 user,1.71 sys
+time mpirun -np 12 ./main -ls 10
+0:09.18 real,87.97 user,3.31 sys
+time mpirun -np 16 ./main -ls 10
+0:08.59 real,105.53 user,4.62 sys
+time mpirun -np 20 ./main -ls 10
+0:11.16 real,179.52 user,6.67 sys
+time mpirun -np 32 ./main -ls 10
+0:15.85 real,248.32 user,86.29 sys
+time mpirun -np 40 ./main -ls 10
+0:22.83 real,345.84 user,154.99 sys
+time mpirun -np 60 ./main -ls 10
+0:30.58 real,519.66 user,156.69 sys
+time mpirun -np 4 ./main -ls 20
+0:07.09 real,23.55 user,0.70 sys
+time mpirun -np 8 ./main -ls 20
+0:07.58 real,50.51 user,1.60 sys
+time mpirun -np 12 ./main -ls 20
+0:11.00 real,106.26 user,2.82 sys
+time mpirun -np 16 ./main -ls 20
+0:12.51 real,159.41 user,5.23 sys
+time mpirun -np 20 ./main -ls 20
+0:14.31 real,240.66 user,7.43 sys
+time mpirun -np 32 ./main -ls 20
+0:21.36 real,344.56 user,119.43 sys
+time mpirun -np 40 ./main -ls 20
+0:29.31 real,474.02 user,177.75 sys
+time mpirun -np 60 ./main -ls 20
+0:35.45 real,671.41 user,123.44 sys
+time mpirun -np 4 ./main -ls 40
+0:09.98 real,35.18 user,0.60 sys
+time mpirun -np 8 ./main -ls 40
+0:12.51 real,88.74 user,1.73 sys
+time mpirun -np 12 ./main -ls 40
+0:12.33 real,125.48 user,2.76 sys
+time mpirun -np 16 ./main -ls 40
+0:18.64 real,262.95 user,5.65 sys
+time mpirun -np 20 ./main -ls 40
+0:22.83 real,402.44 user,7.51 sys
+time mpirun -np 32 ./main -ls 40
+0:40.24 real,576.00 user,333.99 sys
+time mpirun -np 40 ./main -ls 40
+0:44.57 real,710.82 user,306.93 sys
+time mpirun -np 60 ./main -ls 40
+0:58.33 real,1077.17 user,260.00 sys
+time mpirun -np 4 ./main -ls 80
+0:15.77 real,58.29 user,0.63 sys
+time mpirun -np 8 ./main -ls 80
+0:17.11 real,124.76 user,1.49 sys
+time mpirun -np 12 ./main -ls 80
+0:24.78 real,277.80 user,3.39 sys
+time mpirun -np 16 ./main -ls 80
+0:29.04 real,426.07 user,4.85 sys
+time mpirun -np 20 ./main -ls 80
+0:30.00 real,555.81 user,7.09 sys
+time mpirun -np 32 ./main -ls 80
+0:56.12 real,926.88 user,369.06 sys
+time mpirun -np 40 ./main -ls 80
+1:14.26 real,1213.74 user,514.20 sys
+time mpirun -np 60 ./main -ls 80
+1:32.73 real,1790.33 user,363.79 sys
+time mpirun -np 4 ./main -ls 160
+0:28.39 real,107.99 user,0.77 sys
+time mpirun -np 8 ./main -ls 160
+0:37.38 real,287.53 user,1.92 sys
+time mpirun -np 12 ./main -ls 160
+0:47.22 real,537.25 user,2.94 sys
+time mpirun -np 16 ./main -ls 160
+0:50.73 real,777.69 user,4.98 sys
+time mpirun -np 20 ./main -ls 160
+0:52.33 real,999.96 user,7.59 sys
+time mpirun -np 32 ./main -ls 160
+1:40.71 real,1669.10 user,675.60 sys
+time mpirun -np 40 ./main -ls 160
+2:17.65 real,2244.63 user,991.16 sys
+time mpirun -np 60 ./main -ls 160
+3:10.29 real,3408.58 user,1071.21 sys
+time mpirun -np 4 ./main -ls 320
+0:50.28 real,195.79 user,0.85 sys
+time mpirun -np 8 ./main -ls 320
+0:56.18 real,437.55 user,2.04 sys
+time mpirun -np 12 ./main -ls 320
+1:10.58 real,807.10 user,3.55 sys
+time mpirun -np 16 ./main -ls 320
+1:35.32 real,1486.68 user,5.93 sys
+time mpirun -np 20 ./main -ls 320
+1:52.97 real,2199.91 user,8.67 sys
+time mpirun -np 32 ./main -ls 320
+4:07.67 real,3517.53 user,2342.07 sys
+time mpirun -np 40 ./main -ls 320

@@ -21,6 +21,7 @@ template <class T> class SimpleMatrix {
 private:
     int size1;
     int size2;
+    vector<T> arr;
 
 public:
     vector<T> data;
@@ -30,12 +31,14 @@ public:
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
+        arr.resize(size1 * size2);
     }
 
     void resize(int size1, int size2) {
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
+        arr.resize(size1 * size2);
     }
 
     T &operator() (unsigned int i, unsigned int j) {
@@ -98,21 +101,6 @@ public:
 
     void sendPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
         int count = (iEnd - iBegin) * (jEnd - jBegin);
-        T *arr = new T[count];
-
-        int k = 0;
-        for (int i = iBegin; i < iEnd; ++i) {
-            for (int j = jBegin; j < jEnd; ++j) {
-                (*this)(i, j) = arr[k++];
-            }
-        }
-
-        MPI_Send(arr, count, datatype, dest, tag, comm);
-    }
-
-    void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
-        int count = (iEnd - iBegin) * (jEnd - jBegin);
-        T *arr = new T[count];
 
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
@@ -121,7 +109,20 @@ public:
             }
         }
 
-        MPI_Recv(arr, count, datatype, source, tag, comm, status);
+        MPI_Send(arr.data(), count, datatype, dest, tag, comm);
+    }
+
+    void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
+        int count = (iEnd - iBegin) * (jEnd - jBegin);
+
+        MPI_Recv(arr.data(), count, datatype, source, tag, comm, status);
+
+        int k = 0;
+        for (int i = iBegin; i < iEnd; ++i) {
+            for (int j = jBegin; j < jEnd; ++j) {
+                (*this)(i, j) = arr[k++];
+            }
+        }
     }
 };
 
@@ -155,6 +156,7 @@ namespace code {
     int procjGl = 0;
     SimpleMatrix<double> Ab;
 
+    int currentLayer = 0;
     int layersNum = 5;
 
     int M = 0, N = 0;
@@ -474,7 +476,7 @@ namespace code {
         if (dt > dtr) {
             dt = dtr;
         }
-        cout << "dt = " << dt << "\n";
+        //cout << "dt = " << dt << "\n";
     }
 
     void swapData() {
@@ -499,32 +501,57 @@ namespace code {
         MPI_Status *stats = new MPI_Status[4];
         int statsIndex = 0;
 
-        if (leftN > 0) {
-            mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, 11, MPI_COMM_WORLD, & stats[statsIndex++]);
+        const int pass1 = 10 * currentLayer + 1,
+                pass2 = 10 * currentLayer + 2,
+                pass3 = 10 * currentLayer + 3,
+                pass4 = 10 * currentLayer + 4;
+
+        const bool debug = false;
+
+        if (leftN >= 0) {
+            if (debug) cout << "recv " << rank << " <- " << leftN << " " << pass1 << "\n";
+            mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, pass1, MPI_COMM_WORLD, & stats[statsIndex++]);
         }
 
-        if (rightN > 0) {
-            mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, 11, MPI_COMM_WORLD);
-
-            mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, leftN, 12, MPI_COMM_WORLD, & stats[statsIndex++]);
+        if (topN >= 0) {
+            if (debug) cout << "recv " << rank << " <- " << topN << " " << pass3 << "\n";
+            mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass3, MPI_COMM_WORLD, & stats[statsIndex++]);
         }
 
-        if (leftN > 0) {
-            mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, 12, MPI_COMM_WORLD);
+
+
+        if (rightN >= 0) {
+            if (debug) cout << "send " << rank << " -> " << rightN << " " << pass1 << "\n";
+            mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, pass1, MPI_COMM_WORLD);
         }
 
-        if (topN > 0) {
-            mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, 13, MPI_COMM_WORLD, & stats[statsIndex++]);
+        if (botN >= 0) {
+            if (debug) cout << "send " << rank << " -> " << botN << " " << pass3 << "\n";
+            mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass3, MPI_COMM_WORLD);
         }
 
-        if (botN > 0) {
-            mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, 13, MPI_COMM_WORLD);
 
-            mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, 14, MPI_COMM_WORLD, & stats[statsIndex++]);
+
+        if (rightN >= 0) {
+            if (debug) cout << "recv " << rank << " <- " << rightN << " " << pass2 << "\n";    
+            mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, rightN, pass2, MPI_COMM_WORLD, & stats[statsIndex++]);
         }
 
-        if (topN > 0) {
-            mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, 14, MPI_COMM_WORLD);
+        if (botN >= 0) {
+            if (debug) cout << "recv " << rank << " <- " << botN << " " << pass4 << "\n";
+            mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass4, MPI_COMM_WORLD, & stats[statsIndex++]);
+        }
+
+
+
+        if (leftN >= 0) {
+            if (debug) cout << "send " << rank << " -> " << leftN << " " << pass2 << "\n";
+            mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, pass2, MPI_COMM_WORLD);
+        }
+
+        if (topN >= 0) {
+            if (debug) cout << "send " << rank << " -> " << topN << " " << pass4 << "\n";
+            mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass4, MPI_COMM_WORLD);
         }
     }
 
@@ -537,7 +564,7 @@ namespace code {
 
     void calcTile() {
         stage1();
-        cout << "stage1 done\n";
+        //cout << "stage1 done\n";
         //cout << "\n\n!!! new p = \n";
         //for (int i = 0; i <= M + 1; ++i) {
         //    for (int j = 0; j <= N + 1; ++j) {
@@ -548,17 +575,22 @@ namespace code {
         //cout << std::endl;
 
         stage2();
-        cout << "stage2 done\n";
+        //cout << "stage2 done\n";
         stage3();
-        cout << "stage3 done\n";
+        //cout << "stage3 done\n";
         stage4();
-        cout << "stage4 done\n";
+        //cout << "stage4 done\n";
         stage5();
-        cout << "stage5 done\n";
+        //cout << "stage5 done\n";
 
         countNewDt();
 
         swapData();
+
+        //cout << "sync: " << rank << "\n";
+        syncData();
+
+        //if (isMaster) cout << "sync done " << currentLayer << "\n";
     }
 
     int run(int argc, char *argv[]) {
@@ -576,10 +608,14 @@ namespace code {
             if (cmdOptionExists(argv, argv + argc, "-r3")) {
                 r3 = atoi(getCmdOption(argv, argv + argc, "-r3"));
             }
+            if (cmdOptionExists(argv, argv + argc, "-ls")) {
+                layersNum = atoi(getCmdOption(argv, argv + argc, "-ls"));
+            }
         }
 
         MPI_Bcast(&n, 1, MPI_INT, master, MPI_COMM_WORLD);
         MPI_Bcast(&r3, 1, MPI_INT, master, MPI_COMM_WORLD);
+        MPI_Bcast(&layersNum, 1, MPI_INT, master, MPI_COMM_WORLD);
         
         Ab.resize(n, n + 1);
         Q2 = size / Q1;
@@ -590,13 +626,16 @@ namespace code {
         igl = rank / Q1;
         jgl = rank % Q1;
 
-        leftN = igl - 1;
-        rightN = igl + 1;
-        if (rightN >= Q2) rightN = -1;
+        leftN = rank - 1;
+        if (rank % Q2 == 0) leftN = -1;
+        rightN = rank + 1;
+        if (rightN % Q2 == 0) rightN = -1;
 
-        topN = jgl - 1;
-        botN = jgl + 1;
-        if (botN >= Q1) botN = -1;
+        topN = rank - Q2;
+        botN = rank + Q2;
+        if (botN >= Q1 * Q2) botN = -1;
+
+        cout << "myrank: " << rank << " left:" << leftN << " right:" << rightN << " top:" << topN << " bot:" << botN << "\n";
 
         cout << "Q:" << Q1 << " " << Q2 << " " << Q3 << "\n" << "r: " << r1 << " " << r2 << " " << r3 << "\n";
         u.resize(n, r3);
@@ -609,7 +648,7 @@ namespace code {
             // debugInput();
 
             //computations
-            for (int layer = 0; layer < layersNum; ++layer) {
+            for (currentLayer = 0; currentLayer < layersNum; ++currentLayer) {
                 calcTile();
             }
             // debugOutput();
