@@ -147,7 +147,8 @@ namespace code {
     int igl = 0;
     int jgl = 0;
     int r1 = 1, r2 = 1, r3 = 1;
-    int Q1 = 1, Q2 = 1, Q3 = 1;
+    int Q1 = 2, Q2, Q3 = 1;
+    int leftN, rightN, topN, botN;
     int uSize = 0;
     vector< SimpleMatrix<double> > us;
     int prociGl = 0;
@@ -487,8 +488,51 @@ namespace code {
         }
     }
 
-    void syncData() {
+    void syncArr(SimpleMatrix<double> & mtr) {
+        int iB = max(igl * r1, 0),
+            iE = min(1 + (igl+1)*r1, M);
+        int jB = max(jgl * r2, 0),
+            jE = min(1 + (jgl+1)*r2, N);
 
+        const int haloLen = 2;
+
+        MPI_Status *stats = new MPI_Status[4];
+        int statsIndex = 0;
+
+        if (leftN > 0) {
+            mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, 11, MPI_COMM_WORLD, & stats[statsIndex++]);
+        }
+
+        if (rightN > 0) {
+            mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, 11, MPI_COMM_WORLD);
+
+            mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, leftN, 12, MPI_COMM_WORLD, & stats[statsIndex++]);
+        }
+
+        if (leftN > 0) {
+            mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, 12, MPI_COMM_WORLD);
+        }
+
+        if (topN > 0) {
+            mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, 13, MPI_COMM_WORLD, & stats[statsIndex++]);
+        }
+
+        if (botN > 0) {
+            mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, 13, MPI_COMM_WORLD);
+
+            mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, 14, MPI_COMM_WORLD, & stats[statsIndex++]);
+        }
+
+        if (topN > 0) {
+            mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, 14, MPI_COMM_WORLD);
+        }
+    }
+
+    void syncData() {
+        syncArr(roOld);
+        syncArr(uOld);
+        syncArr(vOld);
+        syncArr(EOld);
     }
 
     void calcTile() {
@@ -521,6 +565,7 @@ namespace code {
         MPI_Init(&argc, &argv);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &size);
+        master = 0;
         isMaster =  rank == master;
 
         if ( isMaster ) {
@@ -537,13 +582,23 @@ namespace code {
         MPI_Bcast(&r3, 1, MPI_INT, master, MPI_COMM_WORLD);
         
         Ab.resize(n, n + 1);
-        Q2 = size;
+        Q2 = size / Q1;
         r1 = ceil(double(n) / Q1);
         r2 = ceil(double(n) / Q2);
         r3 = ceil(double(n) / Q3);
 
+        igl = rank / Q1;
+        jgl = rank % Q1;
+
+        leftN = igl - 1;
+        rightN = igl + 1;
+        if (rightN >= Q2) rightN = -1;
+
+        topN = jgl - 1;
+        botN = jgl + 1;
+        if (botN >= Q1) botN = -1;
+
         cout << "Q:" << Q1 << " " << Q2 << " " << Q3 << "\n" << "r: " << r1 << " " << r2 << " " << r3 << "\n";
-        master = size - 1;
         u.resize(n, r3);
 
         //initialize data
