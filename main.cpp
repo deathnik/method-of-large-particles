@@ -21,7 +21,10 @@ template <class T> class SimpleMatrix {
 private:
     int size1;
     int size2;
-    vector<T> arr;
+    vector<T> arrS;
+    vector<T> arrR;
+    MPI_Request requests[10];
+    int requestsCount = 0;
 
 public:
     vector<T> data;
@@ -31,14 +34,16 @@ public:
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
-        arr.resize(size1 * size2);
+        arrS.resize(size1 * size2);
+        arrR.resize(size1 * size2);
     }
 
     void resize(int size1, int size2) {
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
-        arr.resize(size1 * size2);
+        arrS.resize(size1 * size2);
+        arrR.resize(size1 * size2);
     }
 
     T &operator() (unsigned int i, unsigned int j) {
@@ -105,24 +110,30 @@ public:
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
             for (int j = jBegin; j < jEnd; ++j) {
-                arr[k++] = (*this)(i, j);
+                arrS[k++] = (*this)(i, j);
             }
         }
 
-        MPI_Send(arr.data(), count, datatype, dest, tag, comm);
+        MPI_Isend(arrS.data(), count, datatype, dest, tag, comm, &requests[requestsCount++]);
     }
 
     void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
         int count = (iEnd - iBegin) * (jEnd - jBegin);
 
-        MPI_Recv(arr.data(), count, datatype, source, tag, comm, status);
+        MPI_Irecv(arrR.data(), count, datatype, source, tag, comm, &requests[requestsCount++]);
 
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
             for (int j = jBegin; j < jEnd; ++j) {
-                (*this)(i, j) = arr[k++];
+                (*this)(i, j) = arrR[k++];
             }
         }
+    }
+
+    void wait() {
+        MPI_Status *statuses = new MPI_Status[requestsCount];
+        MPI_Waitall(requestsCount, requests, statuses);
+        requestsCount = 0;
     }
 };
 
@@ -490,7 +501,7 @@ namespace code {
         }
     }
 
-    void syncArr(SimpleMatrix<double> & mtr) {
+    void syncArr(SimpleMatrix<double> & mtr, int index) {
         int iB = max(igl * r1, 0),
             iE = min(1 + (igl+1)*r1, M);
         int jB = max(jgl * r2, 0),
@@ -501,10 +512,10 @@ namespace code {
         MPI_Status *stats = new MPI_Status[4];
         int statsIndex = 0;
 
-        const int pass1 = 10 * currentLayer + 1,
-                pass2 = 10 * currentLayer + 2,
-                pass3 = 10 * currentLayer + 3,
-                pass4 = 10 * currentLayer + 4;
+        const int pass1 = 10* index + 1,
+                pass2 = 10 * index + 2,
+                pass3 = 10 * index + 3,
+                pass4 = 10 * index + 4;
 
         const bool debug = false;
 
@@ -528,7 +539,7 @@ namespace code {
             mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, pass2, MPI_COMM_WORLD);
         }
 
-        
+
 
         if (topN >= 0) {
             if (debug) cout << "recv " << rank << " <- " << topN << " " << pass3 << "\n";
@@ -552,10 +563,16 @@ namespace code {
     }
 
     void syncData() {
-        syncArr(roOld);
-        syncArr(uOld);
-        syncArr(vOld);
-        syncArr(EOld);
+        int index = 0;
+        syncArr(roOld, index++);
+        syncArr(uOld, index++);
+        syncArr(vOld, index++);
+        syncArr(EOld, index++);
+
+        roOld.wait();
+        uOld.wait();
+        vOld.wait();
+        EOld.wait();
     }
 
     void calcTile() {
