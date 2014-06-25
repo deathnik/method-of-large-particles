@@ -86,6 +86,16 @@ public:
         cout << std::endl;
     }
 
+    void save(std::ofstream & myfile) {
+        for (int i = 0; i < size1; ++i) {
+            for (int j = 0; j < size2; ++j) {
+                myfile << (*this)(i, j) << " ";
+            }
+            myfile << std::endl;
+        }
+        myfile << std::endl;
+    }
+
     void sendPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
         int count = (iEnd - iBegin) * (jEnd - jBegin);
         T *arr = new T[count];
@@ -136,7 +146,7 @@ namespace code {
     int size;
     int igl = 0;
     int jgl = 0;
-    int r1 = 1, r2 = 1, r3 = 4;
+    int r1 = 1, r2 = 1, r3 = 1;
     int Q1 = 1, Q2 = 1, Q3 = 1;
     int uSize = 0;
     vector< SimpleMatrix<double> > us;
@@ -177,6 +187,7 @@ namespace code {
         }
         //reading M, N
         if( isMaster ) myfile >> M >> N;
+        cout << "M: " << M << " N: " << N << "\n";
         MPI_Bcast(&M, 1, MPI_INT, master, MPI_COMM_WORLD);
         MPI_Bcast(&N, 1, MPI_INT, master, MPI_COMM_WORLD);
 
@@ -254,9 +265,20 @@ namespace code {
         ro.print();
     }
 
+    void saveOutput() {
+        std::ofstream myfile("output.txt");
+
+        roOld.save(myfile);
+        uOld.save(myfile);
+        vOld.save(myfile);
+        EOld.save(myfile);
+
+        myfile.close();
+    }
+
     void stage1() {
         for (int i = max(igl * r1 - 1,1); i <= min(2 + (igl+1)*r1, M); ++i) {
-            for (int j = max(jgl * r2 - 1,1); i <= min(2 + (jgl+1)*r2, N); ++j) {
+            for (int j = max(jgl * r2 - 1,1); j <= min(2 + (jgl+1)*r2, N); ++j) {
                 p(i, j) = (gamma - 1) * roOld(i, j) *
                           (EOld(i, j) - ((uOld(i, j) * uOld(i, j) + vOld(i, j) * vOld(i, j)) / 2));
             }
@@ -290,13 +312,13 @@ namespace code {
 
     void stage2() {
         for (int i = max(igl * r1 - 1,0); i <= min(1 + (igl+1)*r1, M); ++i) {
-            for (int j = max(jgl * r2 - 1,1); i <= min(1 + (jgl+1)*r2, N); ++j) {
+            for (int j = max(jgl * r2 - 1,1); j <= min(1 + (jgl+1)*r2, N); ++j) {
                 pIPlus05(i, j) = (p(i, j) + p(i+1, j)) / 2;
                 uPlus05(i, j) = (uOld(i, j) + uOld(i+1, j)) / 2;
             }
         }
         for (int i = max(igl * r1 ,1); i <= min(1 + (igl+1)*r1, M); ++i) {
-            for (int j = max(jgl * r2 - 1,0); i <= min(1 + (jgl+1)*r2, N); ++j) {
+            for (int j = max(jgl * r2 - 1,0); j <= min(1 + (jgl+1)*r2, N); ++j) {
                 pJPlus05(i, 0) = (p(i, j) + p(i, j+1)) / 2;
                 vPlus05(i, 0) = (vOld(i, j) + vOld(i, j+1)) / 2;
             }
@@ -306,7 +328,7 @@ namespace code {
 
     void stage3() {
         for (int i = max(igl * r1,1); i <= min(1 + (igl+1)*r1, M); ++i) {
-            for (int j = max(jgl * r2 ,1); i <= min(1 + (jgl+1)*r2, N); ++j) {
+            for (int j = max(jgl * r2 ,1); j <= min(1 + (jgl+1)*r2, N); ++j) {
                 uTilde(i, j) = uOld(i, j) - ((pIPlus05(i, j) + pIPlus05(i - 1, j)) / dz) * (dt / roOld(i, j));
                 vTilde(i, j) = vOld(i, j) - ((pJPlus05(i, j) + pJPlus05(i, j - 1)) / dr) * (dt / roOld(i, j));
                 ETilde(i, j) = EOld(i, j) -
@@ -465,6 +487,10 @@ namespace code {
         }
     }
 
+    void syncData() {
+
+    }
+
     void calcTile() {
         stage1();
         cout << "stage1 done\n";
@@ -511,10 +537,12 @@ namespace code {
         MPI_Bcast(&r3, 1, MPI_INT, master, MPI_COMM_WORLD);
         
         Ab.resize(n, n + 1);
-        Q3 = ceil(double((n + 1)) / r3);
-        Q2 = size - 1;
+        Q2 = size;
         r1 = ceil(double(n) / Q1);
         r2 = ceil(double(n) / Q2);
+        r3 = ceil(double(n) / Q3);
+
+        cout << "Q:" << Q1 << " " << Q2 << " " << Q3 << "\n" << "r: " << r1 << " " << r2 << " " << r3 << "\n";
         master = size - 1;
         u.resize(n, r3);
 
@@ -530,6 +558,7 @@ namespace code {
                 calcTile();
             }
             // debugOutput();
+            saveOutput();
         //}
 
         MPI_Finalize();
