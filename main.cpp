@@ -155,7 +155,7 @@ bool cmdOptionExists(char **begin, char **end, const std::string &option) {
 namespace code {
 
 //------------------  DATA {  --------------------
-    int n = 100;
+    int n = 1000;
     int master = 0;
     int size;
     int igl = 0;
@@ -170,7 +170,7 @@ namespace code {
     SimpleMatrix<double> Ab;
 
     int currentLayer = 0;
-    int layersNum = 10000;
+    int layersNum = 100;
 
     int M = 0, N = 0;
     double dt = 0, dr = 0, dz = 0;
@@ -234,7 +234,7 @@ namespace code {
         MPI_Bcast(&dz, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
         MPI_Bcast(&gamma, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
         MPI_Bcast(&dk, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
-
+        /*
         //reading ro
         if( isMaster )roOld.input(myfile);
         MPI_Bcast(roOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
@@ -251,7 +251,7 @@ namespace code {
         if( isMaster )EOld.input(myfile);
         MPI_Bcast(EOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
-        myfile.close();
+        myfile.close();*/
     }
 
     void debugInput() {
