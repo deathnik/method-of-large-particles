@@ -503,11 +503,15 @@ namespace code {
     }
 
     void syncArr(SimpleMatrix<double> & mtr, int index) {
-        return ;
+        
         int iB = max(igl * r1, 0),
             iE = min(1 + (igl+1)*r1, M);
         int jB = max(jgl * r2, 0),
             jE = min(1 + (jgl+1)*r2, N);
+
+        const bool debug = false;
+
+        if (debug) cout << "rank: " << rank << "\tiGl:" << igl << "\tjGl" << jgl << "\tiB:" << iB << "\tiE:" << iE << "\tjB:" << jB << "\tjE:" << jE << "\n";
 
         const int haloLen = 2;
 
@@ -518,8 +522,6 @@ namespace code {
                 pass2 = 10 * index + 2,
                 pass3 = 10 * index + 3,
                 pass4 = 10 * index + 4;
-
-        const bool debug = false;
 
         if (leftN >= 0) {
             if (debugNum == rank) cout << "recvL " << rank << " <- " << leftN << " " << pass1 << "\n";
@@ -639,8 +641,9 @@ namespace code {
         r2 = ceil(double(n) / Q2);
         r3 = ceil(double(n) / Q3);
 
-        igl = rank / Q1;
-        jgl = rank % Q1;
+        igl = rank % Q1;
+        jgl = rank / Q1;
+
         leftN = rank - 1;
         if (rank % Q2 == 0) leftN = -1;
         rightN = rank + 1;
