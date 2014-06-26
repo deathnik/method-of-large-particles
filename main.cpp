@@ -151,13 +151,13 @@ bool cmdOptionExists(char **begin, char **end, const std::string &option) {
 namespace code {
 
 //------------------  DATA {  --------------------
-    int n = 100;
+    int n = 1000;
     int master = 0;
     int size;
     int igl = 0;
     int jgl = 0;
     int r1 = 1, r2 = 1, r3 = 1;
-    int Q1 = 1, Q2, Q3 = 1;
+    int Q1 = 4, Q2, Q3 = 1;
     int leftN, rightN, topN, botN;
     int uSize = 0;
     vector< SimpleMatrix<double> > us;
@@ -166,7 +166,7 @@ namespace code {
     SimpleMatrix<double> Ab;
 
     int currentLayer = 0;
-    int layersNum = 10000;
+    int layersNum = 1000;
 
     int M = 0, N = 0;
     double dt = 0, dr = 0, dz = 0;
