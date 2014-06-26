@@ -116,13 +116,13 @@ public:
             }
         }
 
-        MPI_Isend(arrS.data(), count, datatype, dest, tag, comm, &requests[requestsCount++]);
+        MPI_Send(arrS.data(), count, datatype, dest, tag, comm);
     }
 
     void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
         int count = abs((iEnd - iBegin) * (jEnd - jBegin));
         if(rank == debugNum) cout<<count<<" count to recv \n" << iBegin << " " << iEnd << " " << jBegin << " " << jEnd <<"\n";
-        MPI_Irecv(arrR.data(), count, datatype, source, tag, comm, &requests[requestsCount++]);
+        MPI_Recv(arrR.data(), count, datatype, source, tag, comm, status);
 
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
@@ -133,6 +133,7 @@ public:
     }
 
     void wait() {
+        return;
         MPI_Status *statuses = new MPI_Status[requestsCount];
         MPI_Waitall(requestsCount, requests, statuses);
         requestsCount = 0;
@@ -523,46 +524,88 @@ namespace code {
                 pass3 = 10 * index + 3,
                 pass4 = 10 * index + 4;
 
-        if (leftN >= 0) {
-            if (debugNum == rank) cout << "recvL " << rank << " <- " << leftN << " " << pass1 << "\n";
-            mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, pass1, MPI_COMM_WORLD, & stats[statsIndex++]);
+        if (jgl % 2 == 0) {
+            if (rightN >= 0) {
+                if (debugNum == rank) cout << "sendR " << rank << " -> " << rightN << " " << pass1 << "\n";
+                mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, pass1, MPI_COMM_WORLD);
+            }
+
+            if (rightN >= 0) {
+                if (debugNum == rank) cout << "recvR " << rank << " <- " << rightN << " " << pass2 << "\n";    
+                mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, rightN, pass2, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
+
+            if (leftN >= 0) {
+                if (debugNum == rank) cout << "recvL " << rank << " <- " << leftN << " " << pass1 << "\n";
+                mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, pass1, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
+            
+            if (leftN >= 0) {
+                if (debugNum == rank) cout << "sendL " << rank << " -> " << leftN << " " << pass2 << "\n";
+                mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, pass2, MPI_COMM_WORLD);
+            }
+        } else {
+            if (leftN >= 0) {
+                if (debugNum == rank) cout << "recvL " << rank << " <- " << leftN << " " << pass1 << "\n";
+                mtr.recvPart(iB + haloLen, iE - haloLen, jB, jB + haloLen, MPI_DOUBLE, leftN, pass1, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
+
+            if (leftN >= 0) {
+                if (debugNum == rank) cout << "sendL " << rank << " -> " << leftN << " " << pass2 << "\n";
+                mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, pass2, MPI_COMM_WORLD);
+            }
+
+            if (rightN >= 0) {
+                if (debugNum == rank) cout << "sendR " << rank << " -> " << rightN << " " << pass1 << "\n";
+                mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, pass1, MPI_COMM_WORLD);
+            }
+
+            if (rightN >= 0) {
+                if (debugNum == rank) cout << "recvR " << rank << " <- " << rightN << " " << pass2 << "\n";    
+                mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, rightN, pass2, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
         }
 
-        if (rightN >= 0) {
-            if (debugNum == rank) cout << "sendR " << rank << " -> " << rightN << " " << pass1 << "\n";
-            mtr.sendPart(iB + haloLen, iE - haloLen, jB + haloLen, jB + haloLen*2, MPI_DOUBLE, rightN, pass1, MPI_COMM_WORLD);
-        }
+        if (igl % 2 == 0) {
+            if (botN >= 0) {
+                if (debugNum == rank) cout << "sendB " << rank << " -> " << botN << " " << pass3 << "\n";
+                mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass3, MPI_COMM_WORLD);
+            }
 
-        if (rightN >= 0) {
-            if (debugNum == rank) cout << "recvR " << rank << " <- " << rightN << " " << pass2 << "\n";    
-            mtr.recvPart(iB + haloLen, iE - haloLen, jE - haloLen, jE, MPI_DOUBLE, rightN, pass2, MPI_COMM_WORLD, & stats[statsIndex++]);
-        }
+            if (botN >= 0) {
+                if (debugNum == rank) cout << "recvB " << rank << " <- " << botN << " " << pass4 << "\n";
+                mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass4, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
 
-        if (leftN >= 0) {
-            if (debugNum == rank) cout << "sendL " << rank << " -> " << leftN << " " << pass2 << "\n";
-            mtr.sendPart(iB + haloLen, iE - haloLen, jE - haloLen*2, jE - haloLen, MPI_DOUBLE, leftN, pass2, MPI_COMM_WORLD);
-        }
+            if (topN >= 0) {
+                if (debugNum == rank) cout << "recvT " << rank << " <- " << topN << " " << pass3 << "\n";
+                mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass3, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
 
+            if (topN >= 0) {
+                if (debugNum == rank) cout << "sendT " << rank << " -> " << topN << " " << pass4 << "\n";
+                mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass4, MPI_COMM_WORLD);
+            }
+        } else {
+            if (topN >= 0) {
+                if (debugNum == rank) cout << "recvT " << rank << " <- " << topN << " " << pass3 << "\n";
+                mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass3, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
 
+            if (topN >= 0) {
+                if (debugNum == rank) cout << "sendT " << rank << " -> " << topN << " " << pass4 << "\n";
+                mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass4, MPI_COMM_WORLD);
+            }
 
-        if (topN >= 0) {
-            if (debugNum == rank) cout << "recvT " << rank << " <- " << topN << " " << pass3 << "\n";
-            mtr.recvPart(iB, iB + haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass3, MPI_COMM_WORLD, & stats[statsIndex++]);
-        }
+            if (botN >= 0) {
+                if (debugNum == rank) cout << "sendB " << rank << " -> " << botN << " " << pass3 << "\n";
+                mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass3, MPI_COMM_WORLD);
+            }
 
-        if (botN >= 0) {
-            if (debugNum == rank) cout << "sendB " << rank << " -> " << botN << " " << pass3 << "\n";
-            mtr.sendPart(iB + haloLen, iB + haloLen*2, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass3, MPI_COMM_WORLD);
-        }
-
-        if (botN >= 0) {
-            if (debugNum == rank) cout << "recvB " << rank << " <- " << botN << " " << pass4 << "\n";
-            mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass4, MPI_COMM_WORLD, & stats[statsIndex++]);
-        }
-
-        if (topN >= 0) {
-            if (debugNum == rank) cout << "sendT " << rank << " -> " << topN << " " << pass4 << "\n";
-            mtr.sendPart(iE - haloLen*2, iE - haloLen, jB + haloLen, jE - haloLen, MPI_DOUBLE, topN, pass4, MPI_COMM_WORLD);
+            if (botN >= 0) {
+                if (debugNum == rank) cout << "recvB " << rank << " <- " << botN << " " << pass4 << "\n";
+                mtr.recvPart(iE - haloLen, iE, jB + haloLen, jE - haloLen, MPI_DOUBLE, botN, pass4, MPI_COMM_WORLD, & stats[statsIndex++]);
+            }
         }
     }
 
