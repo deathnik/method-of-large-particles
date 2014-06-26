@@ -191,17 +191,18 @@ namespace code {
     bool isMaster = false;
     void Init() {
         std::ifstream myfile;
-        if(isMaster){
+        bool fileForAll = true;
+        if(fileForAll || isMaster){
             cout << "Master initializing...\n";
             myfile.open("input.txt");
         }else {
             cout << "Slave initializing...\n";
         }
         //reading M, N
-        if( isMaster ) myfile >> M >> N;
+        if( fileForAll || isMaster ) myfile >> M >> N;
         //cout << "M: " << M << " N: " << N << "\n";
-        MPI_Bcast(&M, 1, MPI_INT, master, MPI_COMM_WORLD);
-        MPI_Bcast(&N, 1, MPI_INT, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&M, 1, MPI_INT, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&N, 1, MPI_INT, master, MPI_COMM_WORLD);
 
         roOld.resize(M + 2, N + 2);
         uOld.resize(M + 2, N + 2);
@@ -223,29 +224,29 @@ namespace code {
         p.resize(M + 2, N + 2);
 
         //reading dt, dr, dz, gamma, dk
-        if( isMaster ) myfile >> dt >> dr >> dz >> gamma >> dk;
+        if(fileForAll || isMaster ) myfile >> dt >> dr >> dz >> gamma >> dk;
 
-        MPI_Bcast(&dt, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
-        MPI_Bcast(&dr, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
-        MPI_Bcast(&dz, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
-        MPI_Bcast(&gamma, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
-        MPI_Bcast(&dk, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&dt, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&dr, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&dz, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&gamma, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( !fileForAll ) MPI_Bcast(&dk, 1, MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading ro
-        if( isMaster )roOld.input(myfile);
-        MPI_Bcast(roOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( fileForAll || isMaster )roOld.input(myfile);
+        if( !fileForAll ) MPI_Bcast(roOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading u
-        if( isMaster )uOld.input(myfile);
-        MPI_Bcast(uOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( fileForAll || isMaster )uOld.input(myfile);
+        if( !fileForAll ) MPI_Bcast(uOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading v
-        if( isMaster )vOld.input(myfile);
-        MPI_Bcast(vOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( fileForAll || isMaster )vOld.input(myfile);
+        if( !fileForAll ) MPI_Bcast(vOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         //reading E
-        if( isMaster )EOld.input(myfile);
-        MPI_Bcast(EOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
+        if( fileForAll || isMaster )EOld.input(myfile);
+        if( !fileForAll ) MPI_Bcast(EOld.data.data(), (M+2)* (N+2), MPI_DOUBLE, master, MPI_COMM_WORLD);
 
         myfile.close();
     }
