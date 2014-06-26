@@ -166,7 +166,7 @@ namespace code {
     SimpleMatrix<double> Ab;
 
     int currentLayer = 0;
-    int layersNum = 100;
+    int layersNum = 1000;
 
     int M = 0, N = 0;
     double dt = 0, dr = 0, dz = 0;
