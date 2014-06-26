@@ -22,8 +22,7 @@ template <class T> class SimpleMatrix {
 private:
     int size1;
     int size2;
-    vector<T> arrS;
-    vector<T> arrR;
+    vector<T> arr;
     MPI_Request requests[10];
     int requestsCount = 0;
 
@@ -35,16 +34,12 @@ public:
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
-        arrS.resize(size1 * size2);
-        arrR.resize(size1 * size2);
     }
 
     void resize(int size1, int size2) {
         this->size1 = size1;
         this->size2 = size2;
         data.resize(size1 * size2);
-        arrS.resize(size1 * size2);
-        arrR.resize(size1 * size2);
     }
 
     T &operator() (unsigned int i, unsigned int j) {
@@ -107,27 +102,28 @@ public:
 
     void sendPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
         int count = abs((iEnd - iBegin) * (jEnd - jBegin));
-        arrS.resize(count);
+        arr.resize(count);
 
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
             for (int j = jBegin; j < jEnd; ++j) {
-                arrS[k++] = (*this)(i, j);
+                arr[k++] = (*this)(i, j);
             }
         }
 
-        MPI_Send(arrS.data(), count, datatype, dest, tag, comm);
+        MPI_Send(arr.data(), count, datatype, dest, tag, comm);
     }
 
     void recvPart(int iBegin, int iEnd, int jBegin, int jEnd, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status* status) {
         int count = abs((iEnd - iBegin) * (jEnd - jBegin));
         if(rank == debugNum) cout<<count<<" count to recv \n" << iBegin << " " << iEnd << " " << jBegin << " " << jEnd <<"\n";
-        MPI_Recv(arrR.data(), count, datatype, source, tag, comm, status);
+        arr.resize(count);
+        MPI_Recv(arr.data(), count, datatype, source, tag, comm, status);
 
         int k = 0;
         for (int i = iBegin; i < iEnd; ++i) {
             for (int j = jBegin; j < jEnd; ++j) {
-                (*this)(i, j) = arrR[k++];
+                (*this)(i, j) = arr[k++];
             }
         }
     }
