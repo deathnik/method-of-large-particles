@@ -157,7 +157,7 @@ namespace code {
     int igl = 0;
     int jgl = 0;
     int r1 = 1, r2 = 1, r3 = 1;
-    int Q1 = 4, Q2, Q3 = 1;
+    int Q1 = 2, Q2, Q3 = 1;
     int leftN, rightN, topN, botN;
     int uSize = 0;
     vector< SimpleMatrix<double> > us;
@@ -194,7 +194,7 @@ namespace code {
         bool fileForAll = true;
         if(fileForAll || isMaster){
             cout << "Master initializing...\n";
-            myfile.open("input.txt");
+            myfile.open("/home/volosatov/method-of-large-particles/input.txt");
         }else {
             cout << "Slave initializing...\n";
         }
@@ -667,6 +667,7 @@ namespace code {
             }
             if (cmdOptionExists(argv, argv + argc, "-ls")) {
                 layersNum = atoi(getCmdOption(argv, argv + argc, "-ls"));
+                cout << "ls: " << layersNum << "\n";
             }
         }
 
@@ -674,6 +675,7 @@ namespace code {
         MPI_Bcast(&r3, 1, MPI_INT, master, MPI_COMM_WORLD);
         MPI_Bcast(&layersNum, 1, MPI_INT, master, MPI_COMM_WORLD);
 
+        while (size < Q1 || (size % Q1)) Q1 /= 2;
         
         Ab.resize(n, n + 1);
         Q2 = size / Q1;
